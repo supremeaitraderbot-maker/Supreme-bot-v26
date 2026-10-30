@@ -1,0 +1,40 @@
+import requests, time, os
+from datetime import datetime
+
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+CHAT = os.environ.get("TELEGRAM_CHAT_ID")
+
+def get_price():
+    try:
+        r = requests.get("https://api.gold-api.com/price/XAU", timeout=10).json()
+        return float(r['price'])
+    except:
+        return 4036.00
+
+def send(msg):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, data={"chat_id": CHAT, "text": msg, "parse_mode": "Markdown"})
+
+position = {"type": None, "entry": 0, "sl": 0, "tp1": 0, "tp2": 0}
+signal_count = 0
+print("V26 LIVE 24/7")
+
+while True:
+    now = datetime.now()
+    price = get_price()
+    if position["type"] == "BUY":
+        if price >= position["tp2"]:
+            signal_count += 1
+            send(f"✅ V26 TP2 HIT! CLOSE BUY +$15\nGOLD ${price:.2f}\nSignal #{signal_count}")
+            position["type"] = None
+        elif price <= position["sl"]:
+            signal_count += 1
+            send(f"🔴 V26 SL HIT! CLOSE BUY -$8\nGOLD ${price:.2f}\nSignal #{signal_count}")
+            position["type"] = None
+    if now.hour in [6,12,18,0] and now.minute == 0:
+        if position["type"] is None:
+            signal_count += 1
+            position = {"type":"BUY","entry":price,"sl":price-8,"tp1":price+8,"tp2":price+15}
+            send(f"🟢 V26 BUY GOLD ${price:.2f}\nSL ${price-8:.2f} TP1 ${price+8:.2f} TP2 ${price+15:.2f}\nSignal #{signal_count}")
+            time.sleep(65)
+    time.sleep(60)
